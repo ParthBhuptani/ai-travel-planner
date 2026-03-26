@@ -52,6 +52,6 @@ streamlit run app.py
 ```
 ---
 ## 🌐 Live Demo
-👉 Try the app here: https://ai-travel-planner-ml.streamlit.app/
+👉 Try the app here: [ai-travel-planner.streamlit.app/](https://ai-travel-planner1.streamlit.app/)
 
 ⚠️ Note: The app may take a few seconds to load initially as it is hosted on free Streamlit Cloud.
