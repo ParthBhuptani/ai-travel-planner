@@ -33,14 +33,14 @@ An AI-powered travel planner that generates personalized trip plans based on bud
 ## 📸 Screenshots
 
 ### 🔹 Travel Plan Result
-![Result](result.png)
+![Result](images/result1.png)
 
 
 ### 🔹 Suggested Activities
-![Activities](activities.png)
+![Activities](images/activities.png)
 
 ### 🔹 Day-wise Itinerary
-![Itinerary](itinerary.png)
+![Itinerary](images/itinerary.png)
 
 ---
 
