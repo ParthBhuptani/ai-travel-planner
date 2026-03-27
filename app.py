@@ -1,14 +1,12 @@
 import streamlit as st
 import pickle
-import random
-from travel_data import get_destinations_df, get_activities
+import pandas as pd
+import math
+import pydeck as pdk
+from travel_data import get_destinations_df, get_activities, get_coordinates
 
 # ===== CONFIG =====
-st.set_page_config(
-    page_title="AI Travel Planner",
-    page_icon="🌍",
-    layout="centered"
-)
+st.set_page_config(page_title="AI Travel Planner", page_icon="🌍", layout="wide")
 
 # ===== CACHE =====
 @st.cache_resource
@@ -21,159 +19,190 @@ def load_data():
 
 model = load_model()
 df = load_data()
-destinations = df["destination"].tolist()
 
-# ===== CUSTOM CSS =====
-st.markdown("""
-<style>
-.main {
-    background: linear-gradient(to right, #0f172a, #1e293b);
-}
-.card {
-    padding:20px;
-    border-radius:12px;
-    background: linear-gradient(135deg,#1f3b4d,#2563eb);
-    color:white;
-    margin-bottom:15px;
-}
-.box {
-    padding:10px;
-    margin:6px 0;
-    border-radius:8px;
-    background-color:#1e293b;
-}
-.itinerary {
-    padding:12px;
-    margin:8px 0;
-    border-radius:8px;
-    background-color:#0f172a;
-}
-</style>
-""", unsafe_allow_html=True)
+# ===== DISTANCE FUNCTION =====
+def get_distance_time(lat1, lon1, lat2, lon2):
+    R = 6371
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+
+    distance = R * c
+    time = distance / 60
+
+    return int(distance), round(time, 1)
 
 # ===== HEADER =====
-st.markdown("""
-<h1 style='text-align:center;'>🌍 AI Travel Planner</h1>
-<p style='text-align:center;'>Plan smart trips with AI recommendations</p>
-""", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align:center;'>🌍 AI Travel Planner</h1>", unsafe_allow_html=True)
 
-st.markdown("### 🌍 Discover smart travel planning with AI")
-st.markdown("---")
+# ===== REGION FILTER =====
+region = st.selectbox("🌍 Choose Region", ["All", "India", "International"])
+
+if region == "India":
+    df_filtered = df[df["country"] == "India"]
+elif region == "International":
+    df_filtered = df[df["country"] != "India"]
+else:
+    df_filtered = df
+
+destinations = df_filtered["destination"].tolist()
 
 # ===== INPUT =====
-st.markdown("### 🧾 Enter Trip Details")
+start_city = st.text_input("📍 Starting City")
+stops = st.multiselect("🛑 Stops", destinations)
+end_city = st.selectbox("🏁 Final Destination", destinations)
 
 col1, col2 = st.columns(2)
-
 with col1:
-    place = st.selectbox("🌍 Select Destination", destinations)
-
+    days = st.number_input("📅 Days", min_value=1)
 with col2:
-    season = st.selectbox("🌤 Season", ["Summer", "Winter", "Monsoon"])
-
-budget = st.number_input("💰 Budget (₹)", min_value=1000)
-days = st.number_input("📅 Days", min_value=1)
-
-season_map = {"Summer": 0, "Winter": 1, "Monsoon": 2}
-season_value = season_map[season]
-
-st.markdown("---")
+    budget = st.number_input("💰 Budget", min_value=1000)
 
 # ===== BUTTON =====
 if st.button("🚀 Generate Travel Plan"):
 
-    with st.spinner("Generating your travel plan..."):
-        prediction = model.predict([[budget, days, season_value]])
+    # ===== ROUTE =====
+    route = []
+    if start_city:
+        route.append(start_city)
+    route.extend(stops)
+    route.append(end_city)
 
-    data = df[df["destination"] == place].iloc[0]
+    city_data = []
 
-    # ===== SMART TRAVEL STYLE =====
-    score = {
-        "beach": data["beach"],
-        "mountains": data["mountains"],
-        "culture": data["culture"],
-        "adventure": data["adventure"],
-        "luxury": data["luxury"]
-    }
+    for city in route:
+        if city in df["destination"].values:
+            data = df[df["destination"] == city].iloc[0]
+            acts = get_activities(city, 5)
 
-    best_type = max(score, key=score.get)
+            city_data.append({
+                "name": city,
+                "data": data,
+                "activities": acts
+            })
 
-    if best_type == "beach":
-        category = "🏖️ Beach & Relaxation"
-    elif best_type == "mountains":
-        category = "🏔️ Adventure & Nature"
-    elif best_type == "culture":
-        category = "🏛️ Cultural Exploration"
-    elif best_type == "adventure":
-        category = "🧗 Adventure Travel"
-    elif best_type == "luxury":
-        category = "💎 Luxury Travel"
-    else:
-        category = "🌍 General Travel"
+    tab1, tab2, tab3 = st.tabs(["Overview", "Activities", "Itinerary"])
 
-    # ===== COST CALCULATION =====
-    est_total = data['cost_per_day'] * days
+    # ===== TAB 1 =====
+    with tab1:
 
-    # ===== RESULT CARD =====
-    st.markdown(f"""
-    <div class="card">
-    <h3>🌍 {place}, {data['country']}</h3>
-    <p><b>🎯 Travel Style:</b> {category}</p>
-    <p>💰 Avg Cost/Day: ${data['cost_per_day']}</p>
-    <p>📊 Estimated Trip Cost: ${est_total}</p>
-    <p>📅 Best Months: {data['best_months']}</p>
-    <p>🛡️ Safety: {data['safety_score']}/10</p>
-    </div>
-    """, unsafe_allow_html=True)
+        col1, col2 = st.columns([1, 1])
 
-    # ===== ACTIVITIES =====
-    st.markdown("### ✨ Suggested Activities")
+        # ===== LEFT SIDE =====
+        with col1:
+            st.markdown("### 🧭 Route Details")
 
-    activities = get_activities(place, 7)
+            for i in range(len(route)-1):
+                lat1, lon1 = get_coordinates(route[i])
+                lat2, lon2 = get_coordinates(route[i+1])
 
-    for act in activities:
-        st.markdown(f'<div class="box">• {act}</div>', unsafe_allow_html=True)
+                dist, time = get_distance_time(lat1, lon1, lat2, lon2)
+                st.markdown(f"""
+                    <div style="
+                    padding:10px;
+                    margin-bottom:8px;
+                    border-radius:8px;
+                    background-color:#1e293b;">
+                    <b>📍 {route[i]} → {route[i+1]}</b><br>
+                    Distance: {dist} km<br>
+                    Time: ~{time} hrs
+                    </div>
+                    """, unsafe_allow_html=True)
 
-    st.markdown("---")
+            st.markdown("### 💰 Budget Distribution")
 
-    # ===== DYNAMIC BUDGET =====
-    st.markdown("### 💰 Budget Breakdown")
+            budget_data = []
 
-    stay = int(budget * random.uniform(0.35, 0.45))
-    food_cost = int(budget * random.uniform(0.25, 0.35))
-    travel_cost = budget - (stay + food_cost)
+            for idx, city in enumerate(city_data):
+                city_days = days // len(city_data) + (1 if idx < (days % len(city_data)) else 0)
+                city_budget = int((city_days / days) * budget)
 
-    colA, colB, colC = st.columns(3)
-    colA.metric("Stay", f"₹{stay}")
-    colB.metric("Food", f"₹{food_cost}")
-    colC.metric("Travel", f"₹{travel_cost}")
+                budget_data.append({
+                    "City": city["name"],
+                    "Days": city_days,
+                    "Budget (₹)": city_budget
+                })
 
-    st.markdown("---")
+            df_budget = pd.DataFrame(budget_data)
 
-    # ===== ITINERARY =====
-    st.markdown("### 📅 Suggested Itinerary")
+            st.dataframe(df_budget, use_container_width=True)
 
-    extra_ideas = [
-        "Explore local markets",
-        "Try famous local food",
-        "Relax at scenic spots",
-        "Visit hidden gems",
-        "Enjoy cultural shows"
-    ]
+        # ===== RIGHT SIDE (MAP) =====
+        with col2:
 
-    for day in range(1, days + 1):
+            coords = []
+            for city in route:
+                lat, lon = get_coordinates(city)
+                coords.append([lon, lat])
 
-        if day <= len(activities):
-            text = activities[day-1]
-        else:
-            text = extra_ideas[(day - len(activities) - 1) % len(extra_ideas)]
+            layer = pdk.Layer(
+                "PathLayer",
+                data=[{"path": coords}],
+                get_path="path",
+                get_color=[255, 0, 0],
+                width_min_pixels=3
+            )
 
-        st.markdown(f"""
-        <div class="itinerary">
-        <b>Day {day}</b>: {text}
-        </div>
-        """, unsafe_allow_html=True)
+            # ✅ FIXED FOCUS (NO RESET)
+            if "focus_city" not in st.session_state:
+                st.session_state.focus_city = route[0]
+
+            selected = st.selectbox(
+                "🔍 Focus Location",
+                route,
+                index=route.index(st.session_state.focus_city)
+            )
+
+            st.session_state.focus_city = selected
+
+            lat, lon = get_coordinates(st.session_state.focus_city)
+
+            view_state = pdk.ViewState(
+                latitude=lat,
+                longitude=lon,
+                zoom=7
+            )
+
+            st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state))
+
+    # ===== TAB 2 =====
+    with tab2:
+        for city in city_data:
+            st.markdown(f"### {city['name']}")
+            for act in city["activities"]:
+                st.write(f"• {act}")
+
+    # ===== TAB 3 =====
+    with tab3:
+        st.markdown("### 📅 Itinerary")
+
+        days_per_city = days // len(city_data)
+        extra_days = days % len(city_data)
+
+        day_count = 1
+
+        for idx, city in enumerate(city_data):
+
+            city_days = days_per_city + (1 if idx < extra_days else 0)
+
+            st.markdown(f"### {city['name']} ({city_days} days)")
+
+            for i in range(city_days):
+
+                if i < len(city["activities"]):
+                    text = city["activities"][i]
+                else:
+                    text = "Explore local places"
+
+                st.write(f"Day {day_count}: {text}")
+                day_count += 1
+
+            if idx < len(city_data) - 1:
+                st.write("🚗 Travel to next destination")
+                day_count += 1
 
 # ===== FOOTER =====
 st.markdown("---")
-st.markdown("<center>🚀 Built by Parth | AI Travel Planner</center>", unsafe_allow_html=True)
+st.markdown("<center>🚀 Built by Parth</center>", unsafe_allow_html=True)
