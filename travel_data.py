@@ -41,6 +41,14 @@ DESTINATIONS = [
     ("Cusco", "Peru", "Americas", 60, "May-Sep", 12, 0,1,1,1,0,1,0,1,1, 7.5, "Spanish", "PEN", 8),
     ("Dubrovnik", "Croatia", "Europe", 130, "Jun-Sep", 22, 1,0,1,0,1,0,0,1,0, 9.0, "Croatian", "EUR", 9),
     ("Chiang Mai", "Thailand", "Asia", 40, "Nov-Feb", 25, 0,1,1,1,0,1,0,1,1, 8.5, "Thai", "THB", 9),
+    ("Delhi", "India", "Asia", 40, "Oct-Mar", 25, 0,0,1,1,1,1,0,1,1, 7.5, "Hindi", "INR", 9),
+    ("Mumbai", "India", "Asia", 50, "Nov-Feb", 30, 1,0,1,1,1,1,1,1,0, 7.0, "Hindi", "INR", 9),
+    ("Jaipur", "India", "Asia", 35, "Oct-Mar", 28, 0,0,1,0,0,1,0,1,1, 8.0, "Hindi", "INR", 9),
+    ("Manali", "India", "Asia", 30, "Mar-Jun", 15, 0,1,1,1,0,1,0,1,1, 8.5, "Hindi", "INR", 9),
+    ("Rishikesh", "India", "Asia", 25, "Sep-Apr", 20, 0,1,1,1,0,1,0,1,1, 8.8, "Hindi", "INR", 9),
+    ("Varanasi", "India", "Asia", 20, "Oct-Mar", 27, 0,0,1,0,0,1,0,1,1, 8.0, "Hindi", "INR", 9),
+    ("Udaipur", "India", "Asia", 35, "Oct-Mar", 26, 0,0,1,0,0,1,1,1,0, 8.5, "Hindi", "INR", 9),
+    ("Ladakh", "India", "Asia", 45, "May-Sep", 10, 0,1,1,1,0,0,0,1,0, 9.0, "Hindi", "INR", 8),
 ]
 
 COLUMNS = [
@@ -91,6 +99,14 @@ ACTIVITIES_DB = {
     "Dubai":        ["Burj Khalifa","Dubai Mall","Desert Safari","Gold Souk","Dubai Frame","Jumeirah Beach","Marina Dhow Cruise"],
     "Santorini":    ["Oia Sunset","Caldera Hike","Wine Tour","Akrotiri Ruins","Red Beach","Boat Trip","Fira to Oia Trek"],
     "default":      ["City Walking Tour","Local Food Tour","Museum Visit","Day Trip","Sunset Viewpoint","Shopping District","Cultural Performance"],
+    "Delhi": ["Red Fort","India Gate","Lotus Temple","Chandni Chowk Food Tour","Qutub Minar"],
+    "Mumbai": ["Marine Drive","Gateway of India","Juhu Beach","Local Street Food Tour","Elephanta Caves"],
+    "Jaipur": ["Amber Fort","Hawa Mahal","City Palace","Local Bazaar Shopping","Desert Safari"],
+    "Manali": ["Solang Valley","Rohtang Pass","River Rafting","Mall Road Walk","Snow Activities"],
+    "Rishikesh": ["River Rafting","Laxman Jhula","Yoga Session","Ganga Aarti","Camping"],
+    "Varanasi": ["Ganga Aarti","Boat Ride","Kashi Vishwanath Temple","Old City Walk","Street Food Tour"],
+    "Udaipur": ["City Palace","Lake Pichola Boat Ride","Saheliyon Ki Bari","Sunset View","Local Market"],
+    "Ladakh": ["Pangong Lake","Magnetic Hill","Nubra Valley","Bike Ride","Monastery Visit"],
 }
 
 def get_activities(dest: str, n: int = 5) -> list:
@@ -107,3 +123,31 @@ TRAVEL_TIPS = {
     "Middle East": ["Dress conservatively","Ramadan affects opening hours","Friday is the weekend in many countries","Haggling is expected in souks","Alcohol restrictions vary by country"],
     "Oceania": ["Book domestic flights early","Respect indigenous culture and sacred sites","Sun protection is essential","Wildlife is unique — do not disturb","Hire a car for flexibility"],
 }
+# ── Coordinates for Map (NEW ADDITION) ─────────────────────────
+
+COORDINATES = {
+    "Bali": (-8.3405, 115.0920),
+    "Paris": (48.8566, 2.3522),
+    "Tokyo": (35.6762, 139.6503),
+    "New York": (40.7128, -74.0060),
+    "Bangkok": (13.7563, 100.5018),
+    "Rome": (41.9028, 12.4964),
+    "Sydney": (-33.8688, 151.2093),
+    "Dubai": (25.2048, 55.2708),
+    "Santorini": (36.3932, 25.4615),
+    "Maldives": (3.2028, 73.2207),
+    "Cape Town": (-33.9249, 18.4241),
+    "Istanbul": (41.0082, 28.9784),
+    "Barcelona": (41.3851, 2.1734),
+    "Singapore": (1.3521, 103.8198),
+
+    # 🇮🇳 INDIA (important upgrade)
+    "Goa": (15.2993, 74.1240),
+    "Delhi": (28.6139, 77.2090),
+    "Mumbai": (19.0760, 72.8777),
+    "Jaipur": (26.9124, 75.7873),
+    "Manali": (32.2432, 77.1892)
+}
+
+def get_coordinates(destination):
+    return COORDINATES.get(destination, (20.5937, 78.9629))  # default India
