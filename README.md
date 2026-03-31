@@ -54,6 +54,20 @@ This app simplifies the process by:
 
 ---
 
+## 📂 Project Structure
+
+```bash
+ai-travel-planner/
+│
+├── app.py                 # Main Streamlit app
+├── travel_model.pkl       # ML model
+├── travel_data.py         # Dataset + helper functions
+├── requirements.txt       # Dependencies
+├── images/                # Screenshots
+└── README.md
+```
+---
+
 ## 📸 Screenshots
 
 ### 📊 Trip Overview & Route Map
