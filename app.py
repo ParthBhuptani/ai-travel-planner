@@ -34,8 +34,13 @@ def get_distance_time(lat1, lon1, lat2, lon2):
 
     return int(distance), round(time, 1)
 
-# ===== HEADER =====
-st.markdown("<h1 style='text-align:center;'>🌍 AI Travel Planner</h1>", unsafe_allow_html=True)
+# ===== HERO SECTION =====
+st.markdown("""
+<h1 style='text-align:center;'>🌍 AI Travel Planner</h1>
+<p style='text-align:center; font-size:18px;'>Plan smart multi-city trips with AI ✈️</p>
+""", unsafe_allow_html=True)
+
+st.markdown("---")
 
 # ===== REGION FILTER =====
 region = st.selectbox("🌍 Choose Region", ["All", "India", "International"])
@@ -50,6 +55,8 @@ else:
 destinations = df_filtered["destination"].tolist()
 
 # ===== INPUT =====
+st.markdown("### 🧾 Enter Trip Details")
+
 start_city = st.text_input("📍 Starting City")
 stops = st.multiselect("🛑 Stops", destinations)
 end_city = st.selectbox("🏁 Final Destination", destinations)
@@ -60,13 +67,18 @@ with col1:
 with col2:
     budget = st.number_input("💰 Budget", min_value=1000)
 
+st.markdown("---")
+
 # ===== BUTTON =====
 if st.button("🚀 Generate Travel Plan"):
 
-    # ===== ROUTE =====
+    # ✅ EMPTY CHECK
+    if not start_city or not end_city:
+        st.warning("Please enter start and end city")
+        st.stop()
+
     route = []
-    if start_city:
-        route.append(start_city)
+    route.append(start_city)
     route.extend(stops)
     route.append(end_city)
 
@@ -83,6 +95,20 @@ if st.button("🚀 Generate Travel Plan"):
                 "activities": acts
             })
 
+    # ===== TRIP SUMMARY =====
+    total_distance = 0
+    for i in range(len(route)-1):
+        lat1, lon1 = get_coordinates(route[i])
+        lat2, lon2 = get_coordinates(route[i+1])
+        dist, _ = get_distance_time(lat1, lon1, lat2, lon2)
+        total_distance += dist
+
+    st.markdown("### 📊 Trip Summary")
+    colA, colB, colC = st.columns(3)
+    colA.metric("Total Cities", len(city_data))  # ✅ updated label
+    colB.metric("Total Distance", f"{total_distance} km")
+    colC.metric("Budget", f"₹{budget}")
+
     tab1, tab2, tab3 = st.tabs(["Overview", "Activities", "Itinerary"])
 
     # ===== TAB 1 =====
@@ -90,7 +116,7 @@ if st.button("🚀 Generate Travel Plan"):
 
         col1, col2 = st.columns([1, 1])
 
-        # ===== LEFT SIDE =====
+        # ===== LEFT =====
         with col1:
             st.markdown("### 🧭 Route Details")
 
@@ -99,22 +125,17 @@ if st.button("🚀 Generate Travel Plan"):
                 lat2, lon2 = get_coordinates(route[i+1])
 
                 dist, time = get_distance_time(lat1, lon1, lat2, lon2)
+
                 st.markdown(f"""
-                    <div style="
-                    padding:10px;
-                    margin-bottom:8px;
-                    border-radius:8px;
-                    background-color:#1e293b;">
-                    <b>📍 {route[i]} → {route[i+1]}</b><br>
-                    Distance: {dist} km<br>
-                    Time: ~{time} hrs
-                    </div>
-                    """, unsafe_allow_html=True)
+                <div style="padding:12px;margin-bottom:10px;border-radius:10px;background-color:#1e293b;">
+                <b>📍 {i+1}. {route[i]} → {i+2}. {route[i+1]}</b>
+                <br>🚗 {dist} km &nbsp;&nbsp; ⏱ {time} hrs
+                </div>
+                """, unsafe_allow_html=True)
 
             st.markdown("### 💰 Budget Distribution")
 
             budget_data = []
-
             for idx, city in enumerate(city_data):
                 city_days = days // len(city_data) + (1 if idx < (days % len(city_data)) else 0)
                 city_budget = int((city_days / days) * budget)
@@ -125,52 +146,70 @@ if st.button("🚀 Generate Travel Plan"):
                     "Budget (₹)": city_budget
                 })
 
-            df_budget = pd.DataFrame(budget_data)
+            st.dataframe(pd.DataFrame(budget_data), use_container_width=True)
 
-            st.dataframe(df_budget, use_container_width=True)
-
-        # ===== RIGHT SIDE (MAP) =====
+        # ===== RIGHT (MAP IMPROVED) =====
         with col2:
+
+            st.markdown("### 🗺️ Travel Map")
 
             coords = []
             for city in route:
                 lat, lon = get_coordinates(city)
                 coords.append([lon, lat])
 
-            layer = pdk.Layer(
+            avg_lat = sum([c[1] for c in coords]) / len(coords)
+            avg_lon = sum([c[0] for c in coords]) / len(coords)
+
+            # ROUTE LINE
+            line_layer = pdk.Layer(
                 "PathLayer",
                 data=[{"path": coords}],
                 get_path="path",
-                get_color=[255, 0, 0],
+                get_color=[255, 80, 80],
                 width_min_pixels=3
             )
 
-            # ✅ FIXED FOCUS (NO RESET)
-            if "focus_city" not in st.session_state:
-                st.session_state.focus_city = route[0]
+            # ✅ COLORED POINTS (NEW)
+            scatter_data = []
+            for idx, coord in enumerate(coords):
+                if idx == 0:
+                    color = [0, 255, 0]   # start
+                elif idx == len(coords)-1:
+                    color = [255, 0, 0]   # end
+                else:
+                    color = [0, 200, 255] # stops
 
-            selected = st.selectbox(
-                "🔍 Focus Location",
-                route,
-                index=route.index(st.session_state.focus_city)
+                scatter_data.append({
+                    "position": coord,
+                    "color": color
+                })
+
+            scatter_layer = pdk.Layer(
+                "ScatterplotLayer",
+                data=scatter_data,
+                get_position="position",
+                get_color="color",
+                get_radius=15000
             )
-
-            st.session_state.focus_city = selected
-
-            lat, lon = get_coordinates(st.session_state.focus_city)
 
             view_state = pdk.ViewState(
-                latitude=lat,
-                longitude=lon,
-                zoom=7
+                latitude=avg_lat,
+                longitude=avg_lon,
+                zoom=4.5
             )
 
-            st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state))
+            st.pydeck_chart(pdk.Deck(
+                layers=[line_layer, scatter_layer],
+                initial_view_state=view_state
+            ))
 
     # ===== TAB 2 =====
     with tab2:
+        st.markdown("### ✨ Suggested Activities")
+
         for city in city_data:
-            st.markdown(f"### {city['name']}")
+            st.markdown(f"#### 📍 {city['name']}")
             for act in city["activities"]:
                 st.write(f"• {act}")
 
@@ -187,7 +226,8 @@ if st.button("🚀 Generate Travel Plan"):
 
             city_days = days_per_city + (1 if idx < extra_days else 0)
 
-            st.markdown(f"### {city['name']} ({city_days} days)")
+            # ✅ bigger heading
+            st.markdown(f"## 📍 {city['name']} ({city_days} days)")
 
             for i in range(city_days):
 
@@ -196,12 +236,11 @@ if st.button("🚀 Generate Travel Plan"):
                 else:
                     text = "Explore local places"
 
-                st.write(f"Day {day_count}: {text}")
+                st.markdown(f"**Day {day_count}:** {text}")
                 day_count += 1
 
             if idx < len(city_data) - 1:
-                st.write("🚗 Travel to next destination")
-                day_count += 1
+                st.markdown("🚗 Travel to next destination")
 
 # ===== FOOTER =====
 st.markdown("---")
