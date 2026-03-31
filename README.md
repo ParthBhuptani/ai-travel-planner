@@ -84,6 +84,9 @@ ai-travel-planner/
 ## ▶️ Run Locally
 
 ```bash
+git clone https://github.com/ParthBhuptani/ai-travel-planner.git
+cd ai-travel-planner
+
 pip install -r requirements.txt
 streamlit run app.py
 ```
